@@ -2,6 +2,8 @@
 
 import { Request, Response } from "express";
 import * as authService from "./auth.service";
+import { prisma } from '../../config/db' 
+import { AuthRequest } from "../../middleware/auth.middleware";
 
 export const sendOTPController = async (
   req: Request,
@@ -74,4 +76,21 @@ export const verifyOTPController = async (
         error?.message || "OTP verification failed",
     });
   }
+};
+
+
+export const getMeController = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const user = await prisma.user.findUnique({
+    where: {
+      id: req.user!.userId,
+    },
+  });
+
+  res.json({
+    success: true,
+    user,
+  });
 };

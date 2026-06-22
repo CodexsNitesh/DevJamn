@@ -4,7 +4,9 @@ import { Router } from "express";
 import {
   sendOTPController,
   verifyOTPController,
+  getMeController
 } from "./auth.controller";
+import { AuthRequest, protect } from "../../middleware/auth.middleware";
 
 const router = Router();
 
@@ -14,6 +16,8 @@ router.post("/send-otp", sendOTPController);
 router.post("/resend-otp", sendOTPController);
 
 router.post("/verify-otp", verifyOTPController);
+
+router.get("/me", protect, getMeController);
 
 console.log("Auth routes loaded");
 
