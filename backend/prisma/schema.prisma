@@ -7,9 +7,151 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum OTPPurpose {
+  LOGIN
+}
+
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+
+  name       String?
+  email      String   @unique
+  username   String?  @unique
+  avatar     String?
+
+  isVerified Boolean  @default(false)
+
+  provider   AuthProvider @default(LOCAL)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  workspaces WorkspaceMember[]
+  tasks      Task[]
+  messages   Message[]
+
+  @@index([email])
+}
+
+model OTP {
+  id         String     @id @default(uuid())
+
+  email      String
+  code       String
+
+  purpose    OTPPurpose @default(LOGIN)
+
+  expiresAt  DateTime
+
+  createdAt  DateTime   @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model Workspace {
+  id          String   @id @default(uuid())
+
+  name        String
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     WorkspaceMember[]
+  tasks       Task[]
+  channels    Channel[]
+}
+
+model WorkspaceMember {
+  id          String @id @default(uuid())
+
+  userId      String
+  workspaceId String
+
+  role        WorkspaceRole @default(MEMBER)
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+
+  @@index([userId])
+  @@index([workspaceId])
+}
+
+model Task {
+  id          String @id @default(uuid())
+
+  title       String
+  description String?
+
+  status      TaskStatus @default(TODO)
+
+  workspaceId String
+  assignedTo  String?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  assignee    User? @relation(fields: [assignedTo], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId])
+  @@index([assignedTo])
+}
+
+model Channel {
+  id          String @id @default(uuid())
+
+  name        String
+
+  workspaceId String
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  messages    Message[]
+
+  createdAt   DateTime @default(now())
+
+  @@unique([workspaceId, name])
+
+  @@index([workspaceId])
+}
+
+model Message {
+  id          String @id @default(uuid())
+
+  content     String
+
+  senderId    String
+  channelId   String
+
+  sender      User @relation(fields: [senderId], references: [id])
+
+  channel     Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([senderId])
+  @@index([channelId])
 }
