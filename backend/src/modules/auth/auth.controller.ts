@@ -94,3 +94,44 @@ export const getMeController = async (
     user,
   });
 };
+
+export const refreshController = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { refreshToken } = req.body;
+
+    const result =
+      await authService.refreshAccessToken(
+        refreshToken
+      );
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    res.status(401).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const logoutController = async (
+  req: Request,
+  res: Response
+) => {
+  const { refreshToken } = req.body;
+
+  const result =
+    await authService.logout(
+      refreshToken
+    );
+
+  res.json({
+    success: true,
+    ...result,
+  });
+};

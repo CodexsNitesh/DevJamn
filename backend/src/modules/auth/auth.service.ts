@@ -2,6 +2,10 @@ import { prisma } from "../../config/db";
 import jwt from "jsonwebtoken";
 import { generateOTP } from "../../services/otp.services";
 import { sendOTPEmail } from "../../services/email.services";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../../utils/token";
 
 const OTP_EXPIRY_MINUTES = 2;
 const OTP_RESEND_COOLDOWN_SECONDS = 30;
@@ -67,6 +71,7 @@ export const sendOTP = async (email: string) => {
   };
 };
 
+
 export const verifyOTP = async (
   email: string,
   code: string
@@ -92,32 +97,34 @@ export const verifyOTP = async (
     },
   });
 
-  // Remove OTP after successful verification
+  // Delete OTP after successful verification
   await prisma.oTP.deleteMany({
     where: { email },
   });
 
-  const jwtSecret = process.env.JWT_SECRET;
-
-  if (!jwtSecret) {
-    throw new Error(
-      "JWT_SECRET is not configured"
-    );
-  }
-
-  const accessToken = jwt.sign(
-    {
-      userId: user.id,
-      email: user.email,
-    },
-    jwtSecret,
-    {
-      expiresIn: "7d",
-    }
+  const accessToken = generateAccessToken(
+    user.id,
+    user.email
   );
+
+  const refreshToken = generateRefreshToken(
+    user.id
+  );
+
+  // Save refresh token in DB
+  await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000
+      ),
+    },
+  });
 
   return {
     accessToken,
+    refreshToken,
     user: {
       id: user.id,
       email: user.email,
@@ -128,5 +135,61 @@ export const verifyOTP = async (
       isVerified: user.isVerified,
       createdAt: user.createdAt,
     },
+  };
+};
+
+export const refreshAccessToken = async (
+  refreshToken: string
+) => {
+  const tokenRecord =
+    await prisma.refreshToken.findUnique({
+      where: {
+        token: refreshToken,
+      },
+    });
+
+  if (!tokenRecord) {
+    throw new Error("Invalid refresh token");
+  }
+
+  const decoded = jwt.verify(
+    refreshToken,
+    process.env.JWT_REFRESH_SECRET!
+  ) as {
+    userId: string;
+  };
+
+  const user = await prisma.user.findUnique({
+    where: {
+      id: decoded.userId,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const accessToken =
+    generateAccessToken(
+      user.id,
+      user.email
+    );
+
+  return {
+    accessToken,
+  };
+};
+
+export const logout = async (
+  refreshToken: string
+) => {
+  await prisma.refreshToken.deleteMany({
+    where: {
+      token: refreshToken,
+    },
+  });
+
+  return {
+    message: "Logged out successfully",
   };
 };

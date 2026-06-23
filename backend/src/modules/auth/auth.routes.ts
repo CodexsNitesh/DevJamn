@@ -4,7 +4,9 @@ import { Router } from "express";
 import {
   sendOTPController,
   verifyOTPController,
-  getMeController
+  getMeController,
+  refreshController,
+  logoutController
 } from "./auth.controller";
 import { AuthRequest, protect } from "../../middleware/auth.middleware";
 
@@ -17,15 +19,10 @@ router.post("/resend-otp", sendOTPController);
 
 router.post("/verify-otp", verifyOTPController);
 
+router.post("/refresh",  refreshController);
+
+router.post("/logout", logoutController)
+
 router.get("/me", protect, getMeController);
-
-console.log("Auth routes loaded");
-
-router.get("/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Auth route working",
-  });
-});
 
 export default router;
