@@ -13,7 +13,7 @@ export const generateAccessToken = (
     },
     process.env.JWT_SECRET!,
     {
-      expiresIn: "15m",
+      expiresIn: "15d",
     }
   );
 };
